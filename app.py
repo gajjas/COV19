@@ -605,7 +605,7 @@ def get_news(state=''):
 
 # Define the app
 app.layout = html.Div([
-    html.Div([html.H2("Cov Data")], id="title", className="mt-0",style={"textAlign": "center"}),
+    html.Div([html.H2("Mask On")], id="title", className="mt-0 mb-3",style={"textAlign": "center", "font-family": "courier new"}),
     html.Div([
         tabs,
         html.Div(id="content")
