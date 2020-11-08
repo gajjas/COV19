@@ -16,6 +16,7 @@ from plotly.subplots import make_subplots
 from urllib.request import urlopen
 import json
 import numpy as np
+from flask_caching import Cache
 
 # Components
 from assets.components.tabs import tabs
@@ -25,8 +26,15 @@ from assets.components.layouts.plotLayout import customLayout
 
 df = pd.read_csv("https://api.covidtracking.com/v1/states/daily.csv", dtype={"fips": str})
 df2 = pd.read_csv("us-countiesv4.csv", dtype={"fips": str})
-
+TIMEOUT = 86400
 college_df = pd.read_csv('college_data.csv')
+
+app = dash.Dash(__name__, suppress_callback_exceptions=True, external_stylesheets=["https://stackpath.bootstrapcdn.com/bootswatch/4.5.2/darkly/bootstrap.min.css"])
+cache = Cache(app.server, config={
+    # try 'filesystem' if you don't want to setup redis
+    'CACHE_TYPE': 'filesystem',
+    'CACHE_DIR': 'app-cache'
+})
 
 states = {
         'AK': 'Alaska',
@@ -98,7 +106,8 @@ def timeConverter(s):
 
 def timeC(t):
     return datetime.datetime.fromtimestamp(t).strftime("%Y-%m-%d")
-    
+
+@cache.memoize(timeout=1200)
 def get_news(state=''):
     apikey = 'DlpBuDZRNirtABswzICFiQAFiTMWlobU'
     query_url = f"https://api.nytimes.com/svc/search/v2/articlesearch.json?fq=headline:('coronavirus')&api-key={apikey}&sort=newest"
@@ -123,8 +132,8 @@ def get_news(state=''):
 #     for i, date
 
 # Initialise the app
-app = dash.Dash(__name__, suppress_callback_exceptions=True, external_stylesheets=["https://stackpath.bootstrapcdn.com/bootswatch/4.5.2/darkly/bootstrap.min.css"])
 
+@cache.memoize(timeout=TIMEOUT)
 def collegeMap():
     fig = px.scatter_mapbox(college_df, lat="lat", lon="long", hover_data={'lat': False, 'long': False, 'college': True, 'cases': True}, color_discrete_sequence=["#54B98F"], zoom=3, height=1000)
     fig.update_layout(mapbox_style="dark", mapbox_accesstoken=token, mapbox_zoom=3.1, mapbox_center = {"lat": 38, "lon": -96})
@@ -527,6 +536,7 @@ def printDate(value):
 def printCountyDate(value1):
     return timeC(value1)
 
+@cache.memoize(timeout=TIMEOUT)
 @app.callback(Output("state-map", "children"), [Input("searchBar", "value"), Input("slider","value")])
 def figure(value, d):
     d = int(datetime.datetime.fromtimestamp(d).strftime("%Y%m%d"))
@@ -543,6 +553,7 @@ def figure(value, d):
 
     return dcc.Graph(figure=fig)
 
+@cache.memoize(timeout=TIMEOUT)
 @app.callback(Output("county-map", "children"), [Input("searchBar-county", "value"), Input("slider-county","value")])
 def countyFigure(value1, d1):
     d1 = int(datetime.datetime.fromtimestamp(d1).strftime("%Y%m%d"))
@@ -574,6 +585,7 @@ def switch_tab(at):
         return college_content
     return html.P("This shouldn't ever be displayed...")
 
+@cache.memoize(timeout=TIMEOUT)
 @app.callback(Output("datatable", "children"), [Input("searchBar", "value"), Input("slider","value")])
 def figureDatatable(value, d):
     d = int(datetime.datetime.fromtimestamp(d).strftime("%Y%m%d"))
@@ -587,6 +599,7 @@ def figureDatatable(value, d):
         style_data_conditional=[{"if":{"state":"active"}, "backgroundColor":"#222", "border":"3px solid #222"}]
     )
 
+@cache.memoize(timeout=TIMEOUT)
 @app.callback(Output("datatable-county", "children"), [Input("searchBar-county", "value"), Input("slider-county","value")])
 def countyDatatable(value1, d1):
     d1 = int(datetime.datetime.fromtimestamp(d1).strftime("%Y%m%d"))
