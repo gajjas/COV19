@@ -17,6 +17,7 @@ from urllib.request import urlopen
 import json
 import numpy as np
 from flask_caching import Cache
+import os
 
 # Components
 from assets.components.tabs import tabs
@@ -30,6 +31,7 @@ TIMEOUT = 86400
 college_df = pd.read_csv('college_data.csv')
 
 app = dash.Dash(__name__, suppress_callback_exceptions=True, external_stylesheets=["https://stackpath.bootstrapcdn.com/bootswatch/4.5.2/darkly/bootstrap.min.css"])
+server = app.server
 cache = Cache(app.server, config={
     # try 'filesystem' if you don't want to setup redis
     'CACHE_TYPE': 'filesystem',

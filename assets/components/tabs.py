@@ -28,7 +28,7 @@ tabs = html.Div(
                 dcc.Tab(label="State", style=tab_style, selected_style=tab_selected_style, value="state-tab"),
                 dcc.Tab(label="County", style=tab_style, selected_style=tab_selected_style, value="county-tab"),
                 dcc.Tab(label="College", style=tab_style, selected_style=tab_selected_style, value="college-tab"),
-                dcc.Tab(label="Info", style=tab_style, selected_style=tab_selected_style, value="info-tab")
+                # dcc.Tab(label="Info", style=tab_style, selected_style=tab_selected_style, value="info-tab")
             ],
             id = "tabs",
             value="state-tab",
