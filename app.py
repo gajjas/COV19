@@ -13,6 +13,9 @@ import requests
 import datetime
 import time
 from plotly.subplots import make_subplots
+from urllib.request import urlopen
+import json
+import numpy as np
 
 # Components
 from assets.components.tabs import tabs
@@ -21,6 +24,7 @@ from assets.components.tabs import tabs
 from assets.components.layouts.plotLayout import customLayout
 
 df = pd.read_csv("https://api.covidtracking.com/v1/states/daily.csv", dtype={"fips": str})
+df2 = pd.read_csv("us-countiesv4.csv", dtype={"fips": str})
 
 states = {
         'AK': 'Alaska',
@@ -92,6 +96,7 @@ def timeConverter(s):
 
 def timeC(t):
     return datetime.datetime.fromtimestamp(t).strftime("%Y-%m-%d")
+    
 
 # def getMarks(minUnix, maxUnix):
 #     for i, date
@@ -117,6 +122,29 @@ def graphObject(b, titl, row, col, height):
 
     for i, v in enumerate(b):
         x, y = plot(v)
+        fig.add_trace(go.Scatter(x=x, y=y, fill='tozeroy'),
+                row=(i // col) + 1, col=(i % col) + 1)
+    
+    return dbc.Col(dcc.Graph(figure=fig), width=12)
+
+def countyPlot(var):
+    data = df2[['date', var]]
+    data.date = pd.to_datetime(df2['date'], format="%Y%m%d")
+    data = data.groupby('date', as_index=False)[var].sum()
+    x = data.date.tolist()
+    y = data[var].tolist()
+    return x, y
+
+def countyGraphObject(b, titl, row, col, height):
+    fig = make_subplots(
+        rows=row, cols=col,
+        subplot_titles=(titl))
+
+    fig.update_layout(customLayout)
+    fig.update_layout({"height":height})
+
+    for i, v in enumerate(b):
+        x, y = countyPlot(v)
         fig.add_trace(go.Scatter(x=x, y=y, fill='tozeroy'),
                 row=(i // col) + 1, col=(i % col) + 1)
     
@@ -206,7 +234,7 @@ state_content = html.Div([
                                         dbc.Card(
                                             dbc.CardBody(
                                                 [
-                                                    html.P(id="slideDate", style={"fontSize":"12px"}, className="my-0")
+                                                    html.P(id="slideDate", style={"fontSize":"12px", "text-align": "center"}, className="my-0")
                                                 ],
                                                 className="mt-0 mb-0 py-3"
                                             ),
@@ -265,7 +293,6 @@ state_content = html.Div([
                 className="my-4 p-2"
             ),
             dbc.Row(
-                # b = ['positive', 'negative', 'totalTestResults', 'hospitalizedCurrently', 'hospitalizedCumulative',    'inIcuCurrently', 'inIcuCumulative', 'onVentilatorCurrently', 'onVentilatorCumulative',    'recovered', 'hospitalized', 'positiveTestsAntigen', 'totalTestsViral',    'positiveTestsViral',    'negativeTestsViral',    'positiveCasesViral',    'deathConfirmed', 'deathProbable']
                 [
                     graphObject(["hospitalizedCumulative","hospitalizedCurrently", "hospitalizedIncrease", "inIcuCumulative", "inIcuCurrently", "onVentilatorCumulative", "onVentilatorCurrently", "deathConfirmed", "deathProbable"], ["Total Hospitalized", "Currently Hospitalized", "Daily Hospitalizations", "Total ICU Patients", "Current ICU Patients", "Ventilator Required Patients", "Patients on Ventilators", "Confirmed Deaths", "Probable Deaths"], 3, 3, 1500)
                 ]
@@ -292,17 +319,141 @@ state_content = html.Div([
     ]
 )
 
-county_content = dbc.Card(
-    dbc.CardBody(
-        [
-        ]
-    ),
-    className="w-100",
+county_content = html.Div([
+        html.Div([
+                dbc.Row(
+                    dbc.Col([
+                            dbc.Select(
+                                options=[
+                                    {'label': 'Cases per day', 'value': 'cases'},
+                                    {'label': 'Deaths per day', 'value': 'deaths'},
+                                ],
+                                value="cases",
+                                id = "searchBar-county",
+                                style={
+                                    "backgroundColor":"#303030",
+                                    "color":"#ffffff",
+                                }
+                            )
+                        ],
+                        width={"size": 6, "offset": 3},
+
+                    ),
+                ),
+            ],
+            className="mb-3",
+        ),
+        dbc.Row(
+            [
+                dbc.Col(
+                    dbc.Card(
+                        dbc.CardBody(
+                            [
+                                html.P("NEWS", id='news')
+                            ]
+                        ),
+                    ),
+                    width=2,
+                    style={
+                        'height': '495px',
+                        "overflowY": "scroll"
+                    }
+                ),
+                dbc.Col([
+                    html.Div(
+                        dbc.Row(
+                            dbc.Col(
+                                dbc.Card(
+                                    dbc.CardBody(id = "county-map"),
+                                )
+                            )
+                        ),
+                        className="mb-3"
+                    ),
+                    dbc.Row(
+                        dbc.Col(
+                            dbc.Row(
+                                [
+                                    dbc.Col(
+                                        dbc.Card(
+                                            dbc.CardBody(
+                                                [
+                                                    dcc.Slider(
+                                                        min= timeConverter(df2.date.min()),
+                                                        max= timeConverter(df2.date.max()),
+                                                        step= 86400,
+                                                        value= timeConverter(df2.date.max()),
+                                                        updatemode="drag",
+                                                        id="slider-county",
+                                                        className="mt-0 mb-0 py-0"
+                                                    )
+                                                ],
+                                                className="mt-0 mb-0 py-3",
+                                            ),
+                                        ),
+                                        width=9,
+                                        className="my-0"
+                                    ),
+                                    dbc.Col(
+                                        dbc.Card(
+                                            dbc.CardBody(
+                                                [
+                                                    html.P(id="slideDate-county", style={"fontSize":"12px", "text-align": "center"}, className="my-0")
+                                                ],
+                                                className="mt-0 mb-0 py-3"
+                                            ),
+                                        ),
+                                        width=3,
+                                        className="my-0"
+                                    )
+                                ]
+                            )
+                        )
+                    )],
+                    width=8
+                ),
+                dbc.Col(
+                    dbc.Card(
+                        dbc.CardBody(
+                            [
+                                html.Div(id='datatable-county')
+                            ],
+                            style={'overflowY':'scroll', 'overflowX':'hidden','height': '495px'}
+                        ),
+                    ), 
+                    width=2
+                )
+            ]
+        ),
+        html.Div(id="Graphs-county", children=[
+            dbc.Card(
+                [
+                    dbc.CardBody(
+                        html.H4("General Information"),
+                        className="p-0"
+                    ),
+                ],
+                style={
+                    "textAlign":"center"
+                },
+                className="my-4 p-2"
+            ),
+            dbc.Row(
+                [
+                    countyGraphObject(["cases","deaths"], ["Total Cases", "Total Deaths"], 1, 2, 500),                        
+                ]
+            ),
+        ])
+    ]
 )
 
 @app.callback(Output("slideDate", "children"),[Input("slider","value")])
 def printDate(value):
     return timeC(value)
+
+@app.callback(Output("slideDate-county", "children"),[Input("slider-county","value")])
+def printCountyDate(value1):
+    return timeC(value1)
 
 @app.callback(Output("state-map", "children"), [Input("searchBar", "value"), Input("slider","value")])
 def figure(value, d):
@@ -313,12 +464,31 @@ def figure(value, d):
         geo = json.load(json_file)
 
     fig = go.Figure(go.Choroplethmapbox(geojson=geo, locations=data.state, z=data[value],
-                                        colorscale="reds",marker_line_width=0.5))
-    fig.update_layout(mapbox_style="light", mapbox_accesstoken=token,
+                                        colorscale="algae",marker_line_width=0.5))
+    fig.update_layout(mapbox_style="dark", mapbox_accesstoken=token,
                     mapbox_zoom=3.1, mapbox_center = {"lat": 39.82, "lon": -96})
-    fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
-
+    fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, paper_bgcolor='#303030', plot_bgcolor='#303030', font={'color': '#d3d3d3'},)
     return dcc.Graph(figure=fig)
+
+@app.callback(Output("county-map", "children"), [Input("searchBar-county", "value"), Input("slider-county","value")])
+def countyFigure(value1, d1):
+    d1 = int(datetime.datetime.fromtimestamp(d1).strftime("%Y%m%d"))
+    with urlopen("https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json") as response:
+        counties = json.load(response)
+
+    token_county = 'pk.eyJ1IjoiYmlnYm9iYnkxMjMiLCJhIjoiY2toN3NmbGsyMGZ4ODJ5cjdiZjAwaXB4NiJ9.3dwyhMsg_ed5AL2jictDnQ'
+
+    data2 = df2.loc[df2['date'] == d1]  
+    fig2 = go.Figure(go.Choroplethmapbox(geojson=counties, locations=data2.fips, z=data2[value1], text=data2.county,
+    hovertemplate = '<b>County: </b> <b>%{text}</b>'+
+                                                '<br><b>' + value1 + ': </b> %{z}<br>' +
+                                                '<extra></extra>', 
+                                            colorscale="algae",marker_line_width=0.5))
+    fig2.update_layout(mapbox_style="dark", mapbox_accesstoken=token_county,
+                    mapbox_zoom=3.1, mapbox_center = {"lat": 39.82, "lon": -96})
+    fig2.update_layout(margin={"r":0,"t":0,"l":0,"b":0},paper_bgcolor='#303030', plot_bgcolor='#303030', font={'color': '#d3d3d3'}, )
+    fig2.update_traces(showscale=False)
+    return dcc.Graph(figure = fig2)
 
 
 @app.callback(Output("content", "children"), [Input("tabs", "value")])
@@ -340,8 +510,22 @@ def figureDatatable(value, d):
         data=data.to_dict('records'),
         style_cell={"backgroundColor":"#303030", "textAlign":"center"},
         style_data_conditional=[{"if":{"state":"active"}, "backgroundColor":"#222", "border":"3px solid #222"}]
-
     )
+
+@app.callback(Output("datatable-county", "children"), [Input("searchBar-county", "value"), Input("slider-county","value")])
+def countyDatatable(value1, d1):
+    d1 = int(datetime.datetime.fromtimestamp(d1).strftime("%Y%m%d"))
+    Input("slider","value")
+    data2 = df2.loc[df2['date'] == d1][['state', value1]]
+    return dt.DataTable(
+        columns=[{"name": i, "id": i} for i in data2.columns],
+        data=data2.to_dict('records'),
+        style_cell={"backgroundColor":"#303030", "textAlign":"center"},
+        style_data_conditional=[{"if":{"state":"active"}, "backgroundColor":"#222", "border":"3px solid #222"}]
+    )
+
+
+
 
 @app.callback(Output("news", "children"), [Input("tabs", "value")])
 def get_news(state=''):
