@@ -9,9 +9,14 @@ import pandas as pd
 import plotly.express as px
 import json
 import plotly.graph_objects as go
+import requests
+import datetime
+import time
 
 # Components
 from assets.components.tabs import tabs
+
+df = pd.read_csv("https://api.covidtracking.com/v1/states/daily.csv", dtype={"fips": str})
 
 states = {
         'AK': 'Alaska',
@@ -73,8 +78,22 @@ states = {
         'WY': 'Wyoming'
 }
 
+def timeConverter(s):
+    s = str(s)
+    y = int(s[0:4])
+    mon = int(s[4:6])
+    d = int(s[6:8])
+    dtime = datetime.datetime(year=y, month=mon, day=d)
+    return time.mktime(dtime.timetuple())
+
+def timeC(t):
+    return datetime.datetime.fromtimestamp(t).strftime("%Y-%m-%d")
+
+# def getMarks(minUnix, maxUnix):
+#     for i, date
+
 # Initialise the app
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+app = dash.Dash(__name__, suppress_callback_exceptions=True, external_stylesheets=["https://stackpath.bootstrapcdn.com/bootswatch/4.5.2/darkly/bootstrap.min.css"])
 
 state_content = html.Div([
     html.Div([
@@ -82,8 +101,13 @@ state_content = html.Div([
                 dbc.Col(
                     dcc.Dropdown(
                         options=[
-                            {'label': 'Confirmed Deaths', 'value': 'deathConfirmed'},
-                            {'label': 'Cases', 'value': 'positiveIncrease'},
+                            {'label': 'Cases per day', 'value': 'positiveIncrease'},
+                            {'label': 'Cumulative Hosiptalizations', 'value': 'hospitalizedCumulative'},
+                            {'label': 'Deaths per day', 'value': 'deathIncrease'},
+                            {'label': 'Total confirmed deaths', 'value': 'death'},         
+                            {'label': 'Current Patients in ICU', 'value':'inIcuCurrently'},
+                            {'label': 'Ventilators Currently Used', 'value':'onVentilatorCurrently'},
+                            {'label': 'Total Recovered', 'value':'recovered'}
                         ],
                         value="positiveIncrease",
                         id = "searchBar"
@@ -100,22 +124,74 @@ state_content = html.Div([
                 dbc.Card(
                     dbc.CardBody(
                         [
-                            html.H1("NEWS")
+                            html.P("NEWS", id='news')
                         ]
                     ),
                 ),
-                width=2
+                width=2,
+                style={
+                    'height': '495px',
+                    "overflowY": "scroll"
+                }
             ),
-            dbc.Col(
-                dbc.Card(
-                    dbc.CardBody(id = "state-map"),
-                )
+            dbc.Col([
+                html.Div(
+                    dbc.Row(
+                        dbc.Col(
+                            dbc.Card(
+                                dbc.CardBody(id = "state-map"),
+                            )
+                        )
+                    ),
+                    className="mb-3"
+                ),
+                dbc.Row(
+                    dbc.Col(
+                        dbc.Row(
+                            [
+                                dbc.Col(
+                                     dbc.Card(
+                                        dbc.CardBody(
+                                            [
+                                                dcc.Slider(
+                                                    min= timeConverter(df.date.min()),
+                                                    max= timeConverter(df.date.max()),
+                                                    step= 86400,
+                                                    value= timeConverter(df.date.max()),
+                                                    updatemode="drag",
+                                                    id="slider",
+                                                    className="mt-0 mb-0 py-0"
+                                                )
+                                            ],
+                                            className="mt-0 mb-0 py-3",
+                                        ),
+                                    ),
+                                    width=9,
+                                    className="my-0"
+                                ),
+                                dbc.Col(
+                                    dbc.Card(
+                                        dbc.CardBody(
+                                            [
+                                                html.P(id="slideDate", style={"fontSize":"12px"}, className="my-0")
+                                            ],
+                                            className="mt-0 mb-0 py-3"
+                                        ),
+                                    ),
+                                    width=3,
+                                    className="my-0"
+                                )
+                            ]
+                        )
+                    )
+                )],
+                width=8
             ),
             dbc.Col(
                 dbc.Card(
                     dbc.CardBody(
                         [
-                            html.H1("TABLE")
+                            html.Div(id='datatable')
                         ]
                     ),
                 ), 
@@ -134,13 +210,15 @@ county_content = dbc.Card(
     className="w-100",
 )
 
+@app.callback(Output("slideDate", "children"),[Input("slider","value")])
+def printDate(value):
+    return timeC(value)
 
-@app.callback(Output("state-map", "children"), [Input("searchBar", "value")])
-def figure(value):
-    df = pd.read_csv("https://api.covidtracking.com/v1/states/daily.csv", dtype={"fips": str})
-    data = df.loc[df['date'] == 20201106][['date', 'state', value]]
+@app.callback(Output("state-map", "children"), [Input("searchBar", "value"), Input("slider","value")])
+def figure(value, d):
+    d = int(datetime.datetime.fromtimestamp(d).strftime("%Y%m%d"))
+    data = df.loc[df['date'] == d][['date', 'state', value]]
     data['state'] = data['state'].map(states)
-    data = data.drop([3, 8, 12, 27, 42, 50]).reset_index(drop=True)
     with open('us-states.json') as json_file:
         geo = json.load(json_file)
 
@@ -160,6 +238,34 @@ def switch_tab(at):
     elif at == "county-tab":
         return county_content
     return html.P("This shouldn't ever be displayed...")
+
+@app.callback(Output("datatable", "children"), [Input("searchBar", "value"), Input("slider","value")])
+def figureDatatable(value, d):
+    d = int(datetime.datetime.fromtimestamp(d).strftime("%Y%m%d"))
+    df = pd.read_csv("https://api.covidtracking.com/v1/states/daily.csv", dtype={"fips": str})
+    Input("slider","value")
+    data = df.loc[df['date'] == d][['state', value]]
+    return dbc.Table.from_dataframe(data, striped=True, bordered=True, hover=True)
+
+@app.callback(Output("news", "children"), [Input("tabs", "value")])
+def get_news(state=''):
+    apikey = 'DlpBuDZRNirtABswzICFiQAFiTMWlobU'
+    search = state + 'covid'
+    query_url = f"https://api.nytimes.com/svc/search/v2/articlesearch.json?fq=headline:('coronavirus')&api-key={apikey}&sort=newest"
+
+    data = requests.get(query_url).json()['response']['docs']
+    news = []
+    for article in data:
+        news.append([article['headline']['main'], article['web_url']])
+    return [
+        dbc.Card(
+            dbc.CardBody(
+                [
+                    html.P(x[0]),
+                    html.A(children='Source: NYTimes', id='link',
+                    href=x[1], target='_blank'),
+                ]
+            )) for x in news]
 
 # Define the app
 app.layout = html.Div([
