@@ -99,6 +99,25 @@ def timeConverter(s):
 def timeC(t):
     return datetime.datetime.fromtimestamp(t).strftime("%Y-%m-%d")
     
+def get_news(state=''):
+    apikey = 'DlpBuDZRNirtABswzICFiQAFiTMWlobU'
+    query_url = f"https://api.nytimes.com/svc/search/v2/articlesearch.json?fq=headline:('coronavirus')&api-key={apikey}&sort=newest"
+
+    data = requests.get(query_url).json()['response']['docs']
+    news = set()
+    for article in data:
+        news.add((article['headline']['main'], article['abstract'], article['web_url']))
+    return [
+        dbc.Card(
+            dbc.CardBody(
+                [
+                    html.A(children=x[0], id='link',
+                    href=x[2], target='_blank'),
+                    html.H6(x[1]),
+                    html.I('Source: NYTimes'),
+                ]
+            )) for x in news]
+
 
 # def getMarks(minUnix, maxUnix):
 #     for i, date
@@ -194,7 +213,7 @@ state_content = html.Div([
                     dbc.Card(
                         dbc.CardBody(
                             [
-                                html.P(id='news')
+                                html.P(get_news())
                             ]
                         ),
                     ),
@@ -357,7 +376,7 @@ county_content = html.Div([
                     dbc.Card(
                         dbc.CardBody(
                             [
-                                html.P("NEWS", id='news')
+                                html.P(get_news())
                             ]
                         ),
                     ),
@@ -463,7 +482,7 @@ college_content = html.Div(
                     dbc.Card(
                         dbc.CardBody(
                             [
-                                html.P(id='news')
+                                html.P(get_news())
                             ]
                         ),
                     ),
@@ -581,31 +600,9 @@ def countyDatatable(value1, d1):
     )
 
 
-
-
-@app.callback(Output("news", "children"), [Input("tabs", "value")])
-def get_news(state=''):
-    apikey = 'DlpBuDZRNirtABswzICFiQAFiTMWlobU'
-    query_url = f"https://api.nytimes.com/svc/search/v2/articlesearch.json?fq=headline:('coronavirus')&api-key={apikey}&sort=newest"
-
-    data = requests.get(query_url).json()['response']['docs']
-    news = set()
-    for article in data:
-        news.add((article['headline']['main'], article['abstract'], article['web_url']))
-    return [
-        dbc.Card(
-            dbc.CardBody(
-                [
-                    html.A(children=x[0], id='link',
-                    href=x[2], target='_blank'),
-                    html.H6(x[1]),
-                    html.I('Source: NYTimes'),
-                ]
-            )) for x in news]
-
 # Define the app
 app.layout = html.Div([
-    html.Div([html.H2("Cov Data")], id="title", className="mt-0",style={"textAlign": "center"}),
+    html.Div([html.H2("COVID-19 Dashboard")], id="title", className="mt-0",style={"textAlign": "center"}),
     html.Div([
         tabs,
         html.Div(id="content")
