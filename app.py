@@ -4,7 +4,6 @@ import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 import dash_table as dt
 from dash.dependencies import Input, Output
-token = 'pk.eyJ1IjoiYmlnYm9iYnkxMjMiLCJhIjoiY2toN3NmbGsyMGZ4ODJ5cjdiZjAwaXB4NiJ9.3dwyhMsg_ed5AL2jictDnQ'
 import pandas as pd
 import plotly.express as px
 import json
@@ -111,7 +110,6 @@ def timeC(t):
 
 @cache.memoize(timeout=1200)
 def get_news(state=''):
-    apikey = 'DlpBuDZRNirtABswzICFiQAFiTMWlobU'
     query_url = f"https://api.nytimes.com/svc/search/v2/articlesearch.json?fq=headline:('coronavirus')&api-key={apikey}&sort=newest"
 
     data = requests.get(query_url).json()['response']['docs']
@@ -562,7 +560,6 @@ def countyFigure(value1, d1):
     with urlopen("https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json") as response:
         counties = json.load(response)
 
-    token_county = 'pk.eyJ1IjoiYmlnYm9iYnkxMjMiLCJhIjoiY2toN3NmbGsyMGZ4ODJ5cjdiZjAwaXB4NiJ9.3dwyhMsg_ed5AL2jictDnQ'
 
     data2 = df2.loc[df2['date'] == d1]  
     fig2 = go.Figure(go.Choroplethmapbox(geojson=counties, locations=data2.fips, z=data2[value1], text=data2.county,
