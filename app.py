@@ -12,9 +12,13 @@ import plotly.graph_objects as go
 import requests
 import datetime
 import time
+from plotly.subplots import make_subplots
 
 # Components
 from assets.components.tabs import tabs
+
+#Layouts
+from assets.components.layouts.plotLayout import customLayout
 
 df = pd.read_csv("https://api.covidtracking.com/v1/states/daily.csv", dtype={"fips": str})
 
@@ -95,110 +99,196 @@ def timeC(t):
 # Initialise the app
 app = dash.Dash(__name__, suppress_callback_exceptions=True, external_stylesheets=["https://stackpath.bootstrapcdn.com/bootswatch/4.5.2/darkly/bootstrap.min.css"])
 
+def plot(var):
+    data = df[['date', var]]
+    data.date = pd.to_datetime(df['date'], format="%Y%m%d")
+    data = data.groupby('date', as_index=False)[var].sum()
+    x = data.date.tolist()
+    y = data[var].tolist()
+    return x, y
+    
+def graphObject(b, titl, row, col, height):
+    fig = make_subplots(
+        rows=row, cols=col,
+        subplot_titles=(titl))
+
+    fig.update_layout(customLayout)
+    fig.update_layout({"height":height})
+
+    for i, v in enumerate(b):
+        x, y = plot(v)
+        fig.add_trace(go.Scatter(x=x, y=y, fill='tozeroy'),
+                row=(i // col) + 1, col=(i % col) + 1)
+    
+    return dbc.Col(dcc.Graph(figure=fig), width=12)
+
 state_content = html.Div([
-    html.Div([
-            dbc.Row(
-                dbc.Col(
-                    dcc.Dropdown(
-                        options=[
-                            {'label': 'Cases per day', 'value': 'positiveIncrease'},
-                            {'label': 'Cumulative Hosiptalizations', 'value': 'hospitalizedCumulative'},
-                            {'label': 'Deaths per day', 'value': 'deathIncrease'},
-                            {'label': 'Total confirmed deaths', 'value': 'death'},         
-                            {'label': 'Current Patients in ICU', 'value':'inIcuCurrently'},
-                            {'label': 'Ventilators Currently Used', 'value':'onVentilatorCurrently'},
-                            {'label': 'Total Recovered', 'value':'recovered'}
+        html.Div([
+                dbc.Row(
+                    dbc.Col([
+                            dbc.Select(
+                                options=[
+                                    {'label': 'Cases per day', 'value': 'positiveIncrease'},
+                                    {'label': 'Cumulative Hosiptalizations', 'value': 'hospitalizedCumulative'},
+                                    {'label': 'Deaths per day', 'value': 'deathIncrease'},
+                                    {'label': 'Total confirmed deaths', 'value': 'death'},         
+                                    {'label': 'Current Patients in ICU', 'value':'inIcuCurrently'},
+                                    {'label': 'Ventilators Currently Used', 'value':'onVentilatorCurrently'},
+                                    {'label': 'Total Recovered', 'value':'recovered'}
+                                ],
+                                value="positiveIncrease",
+                                id = "searchBar",
+                                style={
+                                    "backgroundColor":"#303030",
+                                    "color":"#ffffff",
+                                }
+                            )
                         ],
-                        value="positiveIncrease",
-                        id = "searchBar"
-                    ),
-                    width={"size": 6, "offset": 3}
-                ),
-            )
-        ],
-        className="mb-3"
-    ),
-    dbc.Row(
-        [
-            dbc.Col(
-                dbc.Card(
-                    dbc.CardBody(
-                        [
-                            html.P("NEWS", id='news')
-                        ]
+                        width={"size": 6, "offset": 3},
+
                     ),
                 ),
-                width=2,
-                style={
-                    'height': '495px',
-                    "overflowY": "scroll"
-                }
-            ),
-            dbc.Col([
-                html.Div(
+            ],
+            className="mb-3",
+        ),
+        dbc.Row(
+            [
+                dbc.Col(
+                    dbc.Card(
+                        dbc.CardBody(
+                            [
+                                html.P("NEWS", id='news')
+                            ]
+                        ),
+                    ),
+                    width=2,
+                    style={
+                        'height': '495px',
+                        "overflowY": "scroll"
+                    }
+                ),
+                dbc.Col([
+                    html.Div(
+                        dbc.Row(
+                            dbc.Col(
+                                dbc.Card(
+                                    dbc.CardBody(id = "state-map"),
+                                )
+                            )
+                        ),
+                        className="mb-3"
+                    ),
                     dbc.Row(
                         dbc.Col(
-                            dbc.Card(
-                                dbc.CardBody(id = "state-map"),
+                            dbc.Row(
+                                [
+                                    dbc.Col(
+                                        dbc.Card(
+                                            dbc.CardBody(
+                                                [
+                                                    dcc.Slider(
+                                                        min= timeConverter(df.date.min()),
+                                                        max= timeConverter(df.date.max()),
+                                                        step= 86400,
+                                                        value= timeConverter(df.date.max()),
+                                                        updatemode="drag",
+                                                        id="slider",
+                                                        className="mt-0 mb-0 py-0"
+                                                    )
+                                                ],
+                                                className="mt-0 mb-0 py-3",
+                                            ),
+                                        ),
+                                        width=9,
+                                        className="my-0"
+                                    ),
+                                    dbc.Col(
+                                        dbc.Card(
+                                            dbc.CardBody(
+                                                [
+                                                    html.P(id="slideDate", style={"fontSize":"12px"}, className="my-0")
+                                                ],
+                                                className="mt-0 mb-0 py-3"
+                                            ),
+                                        ),
+                                        width=3,
+                                        className="my-0"
+                                    )
+                                ]
                             )
                         )
-                    ),
-                    className="mb-3"
+                    )],
+                    width=8
                 ),
-                dbc.Row(
-                    dbc.Col(
-                        dbc.Row(
+                dbc.Col(
+                    dbc.Card(
+                        dbc.CardBody(
                             [
-                                dbc.Col(
-                                     dbc.Card(
-                                        dbc.CardBody(
-                                            [
-                                                dcc.Slider(
-                                                    min= timeConverter(df.date.min()),
-                                                    max= timeConverter(df.date.max()),
-                                                    step= 86400,
-                                                    value= timeConverter(df.date.max()),
-                                                    updatemode="drag",
-                                                    id="slider",
-                                                    className="mt-0 mb-0 py-0"
-                                                )
-                                            ],
-                                            className="mt-0 mb-0 py-3",
-                                        ),
-                                    ),
-                                    width=9,
-                                    className="my-0"
-                                ),
-                                dbc.Col(
-                                    dbc.Card(
-                                        dbc.CardBody(
-                                            [
-                                                html.P(id="slideDate", style={"fontSize":"12px"}, className="my-0")
-                                            ],
-                                            className="mt-0 mb-0 py-3"
-                                        ),
-                                    ),
-                                    width=3,
-                                    className="my-0"
-                                )
-                            ]
-                        )
-                    )
-                )],
-                width=8
-            ),
-            dbc.Col(
-                dbc.Card(
+                                html.Div(id='datatable')
+                            ],
+                            style={'overflowY':'scroll', 'overflowX':'hidden','height': '495px'}
+                        ),
+                    ), 
+                    width=2
+                )
+            ]
+        ),
+        html.Div(id="Graphs", children=[
+            dbc.Card(
+                [
                     dbc.CardBody(
-                        [
-                            html.Div(id='datatable')
-                        ]
+                        html.H4("General Information"),
+                        className="p-0"
                     ),
-                ), 
-                width=2
-            )
-        ]
-    )
+                ],
+                style={
+                    "textAlign":"center"
+                },
+                className="my-4 p-2"
+            ),
+            dbc.Row(
+                [
+                    graphObject(["positiveIncrease","deathIncrease", "recovered"], ["Daily Cases", "Daily Deaths", "Total Recovered"], 1, 3, 500),
+                ]
+
+            ),
+            dbc.Card(
+                [
+                    dbc.CardBody(
+                        html.H4("Hospital Information"),
+                        className="p-0"
+                    ),
+                ],
+                style={
+                    "textAlign":"center"
+                },
+                className="my-4 p-2"
+            ),
+            dbc.Row(
+                # b = ['positive', 'negative', 'totalTestResults', 'hospitalizedCurrently', 'hospitalizedCumulative',    'inIcuCurrently', 'inIcuCumulative', 'onVentilatorCurrently', 'onVentilatorCumulative',    'recovered', 'hospitalized', 'positiveTestsAntigen', 'totalTestsViral',    'positiveTestsViral',    'negativeTestsViral',    'positiveCasesViral',    'deathConfirmed', 'deathProbable']
+                [
+                    graphObject(["hospitalizedCumulative","hospitalizedCurrently", "hospitalizedIncrease", "inIcuCumulative", "inIcuCurrently", "onVentilatorCumulative", "onVentilatorCurrently", "deathConfirmed", "deathProbable"], ["Total Hospitalized", "Currently Hospitalized", "Daily Hospitalizations", "Total ICU Patients", "Current ICU Patients", "Ventilator Required Patients", "Patients on Ventilators", "Confirmed Deaths", "Probable Deaths"], 3, 3, 1500)
+                ]
+
+            ),
+            dbc.Card(
+                [
+                    dbc.CardBody(
+                        html.H4("Test Information"),
+                        className="p-0"
+                    ),
+                ],
+                style={
+                    "textAlign":"center"
+                },
+                className="my-4 p-2"
+            ),
+            dbc.Row(
+                [
+                    graphObject(["positiveTestsPeopleAntibody", "positiveCasesViral", "positiveTestsPeopleAntigen", "negativeTestsPeopleAntibody", "negative", "totalTestResults"], ["Positive Antibody Tests", "Positive PCR Tests", "Positive Antigen Tests", "Negative Antibody Tests", "Negative PCR Tests", "Total Test Reults"], 2, 3, 1000),
+                ]
+            ),
+        ])
     ]
 )
 
@@ -245,7 +335,13 @@ def figureDatatable(value, d):
     df = pd.read_csv("https://api.covidtracking.com/v1/states/daily.csv", dtype={"fips": str})
     Input("slider","value")
     data = df.loc[df['date'] == d][['state', value]]
-    return dbc.Table.from_dataframe(data, striped=True, bordered=True, hover=True)
+    return dt.DataTable(
+        columns=[{"name": i, "id": i} for i in data.columns],
+        data=data.to_dict('records'),
+        style_cell={"backgroundColor":"#303030", "textAlign":"center"},
+        style_data_conditional=[{"if":{"state":"active"}, "backgroundColor":"#222", "border":"3px solid #222"}]
+
+    )
 
 @app.callback(Output("news", "children"), [Input("tabs", "value")])
 def get_news(state=''):
@@ -254,9 +350,9 @@ def get_news(state=''):
     query_url = f"https://api.nytimes.com/svc/search/v2/articlesearch.json?fq=headline:('coronavirus')&api-key={apikey}&sort=newest"
 
     data = requests.get(query_url).json()['response']['docs']
-    news = []
+    news = set()
     for article in data:
-        news.append([article['headline']['main'], article['web_url']])
+        news.add((article['headline']['main'], article['web_url']))
     return [
         dbc.Card(
             dbc.CardBody(

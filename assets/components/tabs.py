@@ -7,15 +7,18 @@ tabs_styles = {
 tab_style = {
     'borderBottom': '1px solid #d6d6d6',
     'padding': '6px',
-    'fontWeight': 'bold'
+    'fontWeight': 'bold',
+    'background-color': '#303030',
+    'border-color': '#303030'
+
 }
 
 tab_selected_style = {
-    'borderTop': '1px solid #d6d6d6',
     'borderBottom': '1px solid #d6d6d6',
-    'backgroundColor': '#119DFF',
-    'color': 'white',
-    'padding': '6px'
+    'backgroundColor': '#54B98F',
+    'color': '#222',
+    'padding': '6px',
+    'border-color': '#303030'
 }
 
 tabs = html.Div(
