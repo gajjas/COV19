@@ -22,6 +22,8 @@ from assets.components.layouts.plotLayout import customLayout
 
 df = pd.read_csv("https://api.covidtracking.com/v1/states/daily.csv", dtype={"fips": str})
 
+college_df = pd.read_csv('college_data.csv')
+
 states = {
         'AK': 'Alaska',
         'AL': 'Alabama',
@@ -99,6 +101,13 @@ def timeC(t):
 # Initialise the app
 app = dash.Dash(__name__, suppress_callback_exceptions=True, external_stylesheets=["https://stackpath.bootstrapcdn.com/bootswatch/4.5.2/darkly/bootstrap.min.css"])
 
+def collegeMap():
+    fig = px.scatter_mapbox(college_df, lat="lat", lon="long", hover_data={'lat': False, 'long': False, 'college': True, 'cases': True}, color_discrete_sequence=["#54B98F"], zoom=3, height=1000)
+    fig.update_layout(mapbox_style="dark", mapbox_accesstoken=token, mapbox_zoom=3.1, mapbox_center = {"lat": 38, "lon": -96})
+    fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
+    fig.update_layout({"height":463})
+    return dcc.Graph(figure=fig)
+
 def plot(var):
     data = df[['date', var]]
     data.date = pd.to_datetime(df['date'], format="%Y%m%d")
@@ -157,7 +166,7 @@ state_content = html.Div([
                     dbc.Card(
                         dbc.CardBody(
                             [
-                                html.P("NEWS", id='news')
+                                html.P(id='news')
                             ]
                         ),
                     ),
@@ -206,7 +215,7 @@ state_content = html.Div([
                                         dbc.Card(
                                             dbc.CardBody(
                                                 [
-                                                    html.P(id="slideDate", style={"fontSize":"12px"}, className="my-0")
+                                                    html.P(id="slideDate", style={"fontSize":"12px", "text-align": "center"}, className="my-0")
                                                 ],
                                                 className="mt-0 mb-0 py-3"
                                             ),
@@ -265,11 +274,9 @@ state_content = html.Div([
                 className="my-4 p-2"
             ),
             dbc.Row(
-                # b = ['positive', 'negative', 'totalTestResults', 'hospitalizedCurrently', 'hospitalizedCumulative',    'inIcuCurrently', 'inIcuCumulative', 'onVentilatorCurrently', 'onVentilatorCumulative',    'recovered', 'hospitalized', 'positiveTestsAntigen', 'totalTestsViral',    'positiveTestsViral',    'negativeTestsViral',    'positiveCasesViral',    'deathConfirmed', 'deathProbable']
                 [
                     graphObject(["hospitalizedCumulative","hospitalizedCurrently", "hospitalizedIncrease", "inIcuCumulative", "inIcuCurrently", "onVentilatorCumulative", "onVentilatorCurrently", "deathConfirmed", "deathProbable"], ["Total Hospitalized", "Currently Hospitalized", "Daily Hospitalizations", "Total ICU Patients", "Current ICU Patients", "Ventilator Required Patients", "Patients on Ventilators", "Confirmed Deaths", "Probable Deaths"], 3, 3, 1500)
                 ]
-
             ),
             dbc.Card(
                 [
@@ -300,6 +307,51 @@ county_content = dbc.Card(
     className="w-100",
 )
 
+college_content = html.Div(
+    [
+        dbc.Row(
+            [
+                dbc.Col(
+                    dbc.Card(
+                        dbc.CardBody(
+                            [
+                                html.P(id='news')
+                            ]
+                        ),
+                    ),
+                    width=3,
+                    style={
+                        'height': '495px',
+                        "overflowY": "scroll"
+                    }
+                ),
+                dbc.Col(
+                    [
+                        html.Div(
+                            dbc.Row(
+                                dbc.Col(
+                                    dbc.Card(
+                                        dbc.CardBody(
+                                            [
+                                                collegeMap()
+                                            ],
+                                            id = "college-map"
+                                        ),
+                                    )
+                                )
+                            ),
+                            className="mb-3",
+                        ),
+                    ],
+                    width=9
+                )
+            ]
+        )
+    
+    ]
+)
+
+
 @app.callback(Output("slideDate", "children"),[Input("slider","value")])
 def printDate(value):
     return timeC(value)
@@ -313,10 +365,10 @@ def figure(value, d):
         geo = json.load(json_file)
 
     fig = go.Figure(go.Choroplethmapbox(geojson=geo, locations=data.state, z=data[value],
-                                        colorscale="reds",marker_line_width=0.5))
-    fig.update_layout(mapbox_style="light", mapbox_accesstoken=token,
+                                        colorscale="algae",marker_line_width=0.5))
+    fig.update_layout(mapbox_style="dark", mapbox_accesstoken=token,
                     mapbox_zoom=3.1, mapbox_center = {"lat": 39.82, "lon": -96})
-    fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
+    fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, paper_bgcolor='#303030', plot_bgcolor='#303030', font={'color': '#d3d3d3'})
 
     return dcc.Graph(figure=fig)
 
@@ -327,6 +379,8 @@ def switch_tab(at):
         return state_content
     elif at == "county-tab":
         return county_content
+    elif at == "college-tab":
+        return college_content
     return html.P("This shouldn't ever be displayed...")
 
 @app.callback(Output("datatable", "children"), [Input("searchBar", "value"), Input("slider","value")])
@@ -346,20 +400,20 @@ def figureDatatable(value, d):
 @app.callback(Output("news", "children"), [Input("tabs", "value")])
 def get_news(state=''):
     apikey = 'DlpBuDZRNirtABswzICFiQAFiTMWlobU'
-    search = state + 'covid'
     query_url = f"https://api.nytimes.com/svc/search/v2/articlesearch.json?fq=headline:('coronavirus')&api-key={apikey}&sort=newest"
 
     data = requests.get(query_url).json()['response']['docs']
     news = set()
     for article in data:
-        news.add((article['headline']['main'], article['web_url']))
+        news.add((article['headline']['main'], article['abstract'], article['web_url']))
     return [
         dbc.Card(
             dbc.CardBody(
                 [
-                    html.P(x[0]),
-                    html.A(children='Source: NYTimes', id='link',
-                    href=x[1], target='_blank'),
+                    html.A(children=x[0], id='link',
+                    href=x[2], target='_blank'),
+                    html.H6(x[1]),
+                    html.I('Source: NYTimes'),
                 ]
             )) for x in news]
 
