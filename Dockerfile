@@ -8,5 +8,8 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 COPY . .
 RUN pip install -r requirements.txt
 
+#Expose the dash port
+EXPOSE 8050
+
 # Run the application:
 CMD ["python", "app.py"]
