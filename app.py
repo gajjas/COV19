@@ -24,6 +24,13 @@ from assets.components.tabs import tabs
 #Layouts
 from assets.components.layouts.plotLayout import customLayout
 
+#Environment Variables
+from dotenv import load_dotenv
+
+load_dotenv()
+apikey = os.getenv('NYTIMES_API_KEY')
+token = os.getenv('MAPBOX_TOKEN')
+
 df = pd.read_csv("https://api.covidtracking.com/v1/states/daily.csv", dtype={"fips": str})
 df2 = pd.read_csv("us-countiesv4.csv", dtype={"fips": str})
 TIMEOUT = 86400
@@ -110,7 +117,7 @@ def timeC(t):
 
 @cache.memoize(timeout=1200)
 def get_news(state=''):
-    query_url = f"https://api.nytimes.com/svc/search/v2/articlesearch.json?fq=headline:('coronavirus')&api-key={apikey}&sort=newest"
+    query_url = "https://api.nytimes.com/svc/search/v2/articlesearch.json?fq=headline:('coronavirus')&api-key=" + apikey +"&sort=newest"
 
     data = requests.get(query_url).json()['response']['docs']
     news = set()
@@ -567,7 +574,7 @@ def countyFigure(value1, d1):
                                                 '<br><b>' + value1 + ': </b> %{z}<br>' +
                                                 '<extra></extra>', 
                                             colorscale="algae",marker_line_width=0.5))
-    fig2.update_layout(mapbox_style="dark", mapbox_accesstoken=token_county,
+    fig2.update_layout(mapbox_style="dark", mapbox_accesstoken=token,
                     mapbox_zoom=3.1, mapbox_center = {"lat": 39.82, "lon": -96})
     fig2.update_layout(margin={"r":0,"t":0,"l":0,"b":0},paper_bgcolor='#303030', plot_bgcolor='#303030', font={'color': '#d3d3d3'}, )
     fig2.update_traces(showscale=False)
@@ -625,4 +632,4 @@ app.layout = html.Div([
 
 # Run the app
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=True, port=8050)
