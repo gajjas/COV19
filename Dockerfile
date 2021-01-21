@@ -9,7 +9,7 @@ COPY . .
 RUN pip install -r requirements.txt
 
 #Expose the dash port
-EXPOSE 8050
+EXPOSE 80
 
 # Run the application:
 CMD ["python", "app.py"]
