@@ -118,7 +118,6 @@ def timeC(t):
 @cache.memoize(timeout=1200)
 def get_news(state=''):
     query_url = "https://api.nytimes.com/svc/search/v2/articlesearch.json?fq=headline:('coronavirus')&api-key=" + apikey +"&sort=newest"
-
     data = requests.get(query_url).json()['response']['docs']
     news = set()
     for article in data:
@@ -461,7 +460,7 @@ county_content = html.Div([
                             [
                                 html.Div(id='datatable-county')
                             ],
-                            style={'overflowY':'scroll', 'overflowX':'hidden','height': '495px'}
+                            style={'overflowY':'scroll', 'overflowX':'scroll','height': '495px'}
                         ),
                     ), 
                     width=2
@@ -611,11 +610,12 @@ def countyDatatable(value1, d1):
     d1 = int(datetime.datetime.fromtimestamp(d1).strftime("%Y%m%d"))
     Input("slider","value")
     data2 = df2.loc[df2['date'] == d1][['county', value1]]
+    
     return dt.DataTable(
         columns=[{"name": i, "id": i} for i in data2.columns],
         data=data2.to_dict('records'),
         style_cell={"backgroundColor":"#303030", "textAlign":"center"},
-        style_data_conditional=[{"if":{"county":"active"}, "backgroundColor":"#222", "border":"3px solid #222"}]
+        style_data_conditional=[{"if":{"state":"active"}, "backgroundColor":"#222", "border":"3px solid #222"}]
     )
 
 
