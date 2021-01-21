@@ -610,7 +610,7 @@ def figureDatatable(value, d):
 def countyDatatable(value1, d1):
     d1 = int(datetime.datetime.fromtimestamp(d1).strftime("%Y%m%d"))
     Input("slider","value")
-    data2 = df2.loc[df2['date'] == d1][['state', value1]]
+    data2 = df2.loc[df2['date'] == d1][['county', value1]]
     return dt.DataTable(
         columns=[{"name": i, "id": i} for i in data2.columns],
         data=data2.to_dict('records'),
