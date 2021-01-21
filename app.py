@@ -615,7 +615,7 @@ def countyDatatable(value1, d1):
         columns=[{"name": i, "id": i} for i in data2.columns],
         data=data2.to_dict('records'),
         style_cell={"backgroundColor":"#303030", "textAlign":"center"},
-        style_data_conditional=[{"if":{"state":"active"}, "backgroundColor":"#222", "border":"3px solid #222"}]
+        style_data_conditional=[{"if":{"county":"active"}, "backgroundColor":"#222", "border":"3px solid #222"}]
     )
 
 
